@@ -48,6 +48,7 @@ def post_to_slack(name, new_ver):
     
 def parse_git_sns(data):
     git_token = os.environ.get('git_token')
+    git_api_url = os.environ.get('git_api_url')
     headers = {'Authorization': 'token %s' % git_token}
 
     changed_files = []
