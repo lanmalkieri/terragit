@@ -1,7 +1,7 @@
 #---------------------------------------------------#
 # Function designed to parse incoming git messages
 # and auto tag our commits to master based on what's
-# in the aws-blueprints/version.txt files
+# in version.txt files
 #---------------------------------------------------#  
 
 import json
