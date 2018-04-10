@@ -1,5 +1,5 @@
 ## Terragit
-This is a lambda function designed around reading a version.txt file from a terraform repo (or any repo really) and when a commit hits master, tagging that commit with whatever is in version.txt
+This is a lambda function designed around reading a version.txt file from a terraform repo (or any repo really) and when a commit hits master, tagging that commit with whatever is in version.txt. This was designed for my use for Terraform Modules tagging, but it could really work for whatever.
 
 #### Required Lambda Environment Variables
 - git_token: Git API Token
