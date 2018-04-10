@@ -17,4 +17,4 @@ Magic.
 
 
 Make sure in your terraform-modules repo you are using version.txt files in each of your modules/blueprints, and that the top line of the file looks like:
-`cms: 1.0.0`
+`name: 1.0.0`
