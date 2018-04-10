@@ -73,7 +73,7 @@ def parse_git_sns(data):
             url = "%s/contents/%s" % (git_api_url, git_file)
             file_r = requests.get(url, headers=headers)
             contents = file_r.json()["content"]
-            new_version = base64.b64decode(contents).split('\n', 1)[0].split(":")[1].lstrip()
+            new_version = base64.b64decode(contents).split('\n', 1)[0].split(":")[1].lstrip().strip()
             module_name = git_file.split("/")[1]
             modules[module_name] = new_version
 
