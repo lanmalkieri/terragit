@@ -8,7 +8,7 @@ This is a lambda function designed around reading a version.txt file from a terr
 - repo_name: The name of the repo to look for, like lanmalkieri/terraform-modules
 
 
-#### 
+#### AWS Secret Manager
 - This now supports AWS Secret Manager. https://aws.amazon.com/secrets-manager/
 - Create a secret called git_token and ensure your function has access to decrypt the secret 
 
