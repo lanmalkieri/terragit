@@ -7,7 +7,8 @@ This is a lambda function designed around reading a version.txt file from a terr
 - slack\_hook_url: URL For Slack Hook
 - repo_name: The name of the repo to look for, like lanmalkieri/terraform-modules
 
-### 
+
+#### 
 - This now supports AWS Secret Manager. https://aws.amazon.com/secrets-manager/
 - Create a secret called git_token and ensure your function has access to decrypt the secret 
 
