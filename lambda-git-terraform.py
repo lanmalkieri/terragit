@@ -1,12 +1,13 @@
+#---------------------------------------------------#  
+#     <Christopher Stobie> cstobie@veritone.com     #
 #---------------------------------------------------#
 # Function designed to parse incoming git messages
 # and auto tag our commits to master based on what's
-# in version.txt files
+# in the aws-blueprints/version.txt files
 #---------------------------------------------------#  
 
 import json
 import re
-import sys
 import base64
 import os
 from botocore.vendored import requests
@@ -45,60 +46,93 @@ def post_to_slack(name, new_ver):
         print("Request failed: %d %s", e.code, e.reason)
     except URLError as e:
         print("Server connection failed: %s", e.reason)
+
+def get_secret(secret_name, region_name):
+    endpoint_url = "https://secretsmanager.us-east-1.amazonaws.com"
+
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name,
+        endpoint_url=endpoint_url
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            print("The requested secret " + secret_name + " was not found")
+        elif e.response['Error']['Code'] == 'InvalidRequestException':
+            print("The request was invalid due to:", e)
+        elif e.response['Error']['Code'] == 'InvalidParameterException':
+            print("The request had invalid params:", e)
+    else:
+        if 'SecretString' in get_secret_value_response:
+            v = json.loads(get_secret_value_response['SecretString'])
+            #---------------------------------------------------#  
+            # This expects the name of the saved secret to be
+            # git_token
+            #---------------------------------------------------#  
+            secret = v['git_token']
+            return(secret)
+        else:
+            print("Invalid response, missing SecretString")
+            sys.exit(1)
     
 def parse_git_sns(data):
-    git_token = os.environ.get('git_token')
-    git_api_url = os.environ.get('git_api_url')
+    repo_name = os.environ.get('repo_name')
+    git_token = get_secret('git_token', 'us-east-1')
     headers = {'Authorization': 'token %s' % git_token}
 
     changed_files = []
     tag_list = []
     modules = {}
 
-    if data["ref"] != "refs/heads/master":
-        print("ref not master")
-        sys.exit(0)
+    if data["ref"] == "refs/heads/master" or data["ref"] == "refs/heads/govcloud-master":
+        for key in data["commits"]:
+            if key["distinct"] == True:
+                commit_hash = key["id"]
 
-    for key in data["commits"]:
-        if key["distinct"] == True:
-            commit_hash = key["id"]
+                for obj in key["modified"]:
+                    changed_files.append(obj)
+                for obj in key["added"]:
+                    changed_files.append(obj)
 
-            for obj in key["modified"]:
-                changed_files.append(obj)
-            for obj in key["added"]:
-                changed_files.append(obj)
+        for git_file in changed_files:
+            if "version.txt" in git_file:
+                if data["ref"] == "refs/heads/master": 
+                    url = "https://api.github.com/repos/%s/contents/%s" % (repo_name, git_file)
 
-    for git_file in changed_files:
-        if "version.txt" in git_file:
-            url = "%s/contents/%s" % (git_api_url, git_file)
-            file_r = requests.get(url, headers=headers)
-            contents = file_r.json()["content"]
-            new_version = base64.b64decode(contents).split('\n', 1)[0].split(":")[1].lstrip().strip()
-            module_name = git_file.split("/")[1]
-            modules[module_name] = new_version
+                file_r = requests.get(url, headers=headers)
+                contents = file_r.json()["content"]
+                new_version = base64.b64decode(contents).split('\n', 1)[0].split(":")[1].lstrip().strip()
+                module_name = base64.b64decode(contents).split('\n', 1)[0].split(":")[0]
+                modules[module_name] = new_version
 
-    for name, ver in modules.iteritems():
-        new_ver = name + "-" +  ver
-        tag_json = {
-            "ref": "refs/tags/%s" % new_ver,
-            "sha": commit_hash
-        }
-        print("New tag: %s" % tag_json)
-        tag_headers = {'Authorization': 'token %s' % git_token, 'Content-Type': 'application/json'}
-        tag_url = "%s/git/refs" % git_api_url
-        tag_r = requests.post(tag_url, headers=tag_headers, json=tag_json)
-        print("Tag Response: %s" % tag_r.text)
+        for name, ver in modules.iteritems():
+            new_ver = name + "-" +  ver
+            tag_json = {
+                "ref": "refs/tags/%s" % new_ver,
+                "sha": commit_hash
+            }
+            print("New tag: %s" % tag_json)
+            tag_headers = {'Authorization': 'token %s' % git_token, 'Content-Type': 'application/json'}
+            tag_url = "https://api.github.com/repos/veritone/terraform-modules/git/refs"
+            tag_r = requests.post(tag_url, headers=tag_headers, json=tag_json)
+            print("Tag Response: %s" % tag_r.text)
 
-        if "sha" not in tag_r.text:
-            print("No sha found in tag response")
-            sys.exit(0)
-        else:
-            post_to_slack(name, new_ver)
+            if "sha" not in tag_r.text:
+                print("No sha found in tag response")
+            else:
+                post_to_slack(name, new_ver)
 
 def lambda_handler(event, context):
     message = event['Records'][0]['Sns']['Message']
     print("From SNS: " + message)
     parse_git_sns(json.loads(message))
+
 
 
 
