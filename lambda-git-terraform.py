@@ -75,7 +75,7 @@ def get_secret(secret_name, region_name):
             # This expects the name of the saved secret to be
             # git_token
             #---------------------------------------------------#  
-            secret = v['git_token']
+            secret = v[secret_name]
             return(secret)
         else:
             print("Invalid response, missing SecretString")
@@ -90,7 +90,7 @@ def parse_git_sns(data):
     tag_list = []
     modules = {}
 
-    if data["ref"] == "refs/heads/master" or data["ref"] == "refs/heads/govcloud-master":
+    if data["ref"] == "refs/heads/master":
         for key in data["commits"]:
             if key["distinct"] == True:
                 commit_hash = key["id"]
@@ -119,7 +119,8 @@ def parse_git_sns(data):
             }
             print("New tag: %s" % tag_json)
             tag_headers = {'Authorization': 'token %s' % git_token, 'Content-Type': 'application/json'}
-            tag_url = "https://api.github.com/repos/veritone/terraform-modules/git/refs"
+            # Example tag_url https://api.github.com/repos/org/terraform-modules/git/refs
+            tag_url = tag_url
             tag_r = requests.post(tag_url, headers=tag_headers, json=tag_json)
             print("Tag Response: %s" % tag_r.text)
 
